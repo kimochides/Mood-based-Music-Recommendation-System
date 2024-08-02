@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #c9c2eb;
+        }
+
+        #recommended-tracks {
+            text-align: center;
+        }
+
+        #recommended-tracks .track {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        #recommended-tracks .track img {
+            max-width: 100px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .spotify-link {
+            font-weight: bold;
+            color: #1DB954;
+        }
+    </style>
+    <script>
+        async function fetchMusicRecommendations(mood) {
+            // Your fetchMusicRecommendations function code here
+            const clientId = '45f954ff93b44b71ba8b06a471ea9b1c';
+          const clientSecret = 'ef9a2330f55f4df5b2dbca305c4c7f4a';
+
+          // Obtain access token using client credentials flow
+          const tokenResponse = await fetch('https://accounts.spotify.com/api/token', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                  'Authorization': 'Basic ' + btoa(clientId + ':' + clientSecret)
+              },
+              body: 'grant_type=client_credentials'
+          });
+          const tokenData = await tokenResponse.json();
+          const accessToken = tokenData.access_token;
+
+          // Fetch recommendations based on mood
+          const recommendationsResponse = await fetch(`https://api.spotify.com/v1/recommendations?seed_genres=${mood}&limit=25`, {
+              method: 'GET',
+              headers: {
+                  'Authorization': 'Bearer ' + accessToken
+              }
+          });
+          const recommendationsData = await recommendationsResponse.json();
+          const recommendedTracks = recommendationsData.tracks;
+
+          return recommendedTracks;
+        }
+
+        function openPage() {
+            window.location.href = "homepage.html";
+        }
+
+        async function analyzeSentiment() {
+            var sentence = document.getElementById("sentence-input").value;
+
+    // Tokenize the input sentence into words
+    var words = sentence.toLowerCase().match(/\b\w+\b/g);
+
+    // Define the AFINN-165 wordlist with sentiment scores
+    var afinn = {
+        "happy": 10,
+        "joyful": 10,
+        "content": 10,
+        "delighted": 10,
+        "good": 10,
+        "cheerful": 10,
+        "blissful": 10,
+        "ecstatic": 10,
+        "jubilant": 10,
+        "elated": 10,
+        "satisfied": 10,
+        "radiant": 10,
+        "joy": 10,
+        "calm": 5,
+        "sleepy":5,
+        "tranquil": 5,
+        "serene": 5,
+        "peaceful": 5,
+        "relaxed": 5,
+        "unruffled": 5,
+        "soothing": 5,
+        "placid": 5,
+        "composed": 5,
+        "mellow": 5,
+        "quiet": 5,
+        "sad": -5,
+        "unhappy": -5,
+        "down": -5,
+        "lonely": -5,
+        "depressed": -5,
+        "melancholy": -5,
+        "grief-stricken": -5,
+        "dejected": -5,
+        "despondent": -5,
+        "sorrowful": -5,
+        "downcast": -5,
+        "cry":-5,
+        "disturbed":-5,
+        "mournful": -5,
+        "blue": -5,
+        "heartbroken": -5,
+        "disheartened": -5,
+        "angry": -10,
+        "furious": -10,
+        "irritated": -10,
+        "enraged": -10,
+        "wrathful": -10,
+        "livid": -10,
+        "fuming": -10,
+        "incensed": -10,
+        "infuriated": -10,
+        "outraged": -10,
+        "raging": -10,
+        "pissed": -10
+        // Add more words and their sentiment scores as needed
+    };
+
+    // Calculate the sentiment score of the input sentence
+    var sentimentScore = 0;
+    if (words) {
+        for (var i = 0; i < words.length; i++) {
+            var word = words[i];
+            if (word in afinn) {
+                sentimentScore += afinn[word];
+            }
+        }
+    }
+
+    // Determine mood based on sentiment score
+    var mood;
+    if (sentimentScore > 5) {
+        mood = "happy";
+    } else if (sentimentScore > 0) {
+        mood = "chill";
+    } else if (sentimentScore < 0 & sentimentScore > -6) {
+        mood = "sad";
+    } else {
+        mood = "rock";
+    }
+
+    // Display the predicted mood
+    document.getElementById("output-mood").innerText = "Predicted Mood: " + (mood === "rock" ? "Angry" : mood);
+
+    // Fetch music recommendations based on mood
+    const recommendedTracks = await fetchMusicRecommendations(mood);
+    
+    // Display recommended tracks
+    const tracksContainer = document.getElementById("recommended-tracks");
+    tracksContainer.innerHTML = ""; // Clear previous tracks
+
+    recommendedTracks.forEach(track => {
+        const trackName = track.name;
+        const artistName = track.artists.map(artist => artist.name).join(", ");
+        const imageUrl = track.album.images[0].url;
+        const spotifyLink = track.external_urls.spotify;
+
+        const trackElement = document.createElement("div");
+        trackElement.classList.add("track");
+
+        const trackImage = document.createElement("img");
+        trackImage.src = imageUrl;
+        trackElement.appendChild(trackImage);
+
+        const trackInfo = document.createElement("div");
+        trackInfo.classList.add("track-info");
+
+        const trackNameElement = document.createElement("h3");
+        trackNameElement.innerText = trackName;
+        trackInfo.appendChild(trackNameElement);
+
+        const artistNameElement = document.createElement("p");
+        artistNameElement.innerText = artistName;
+        trackInfo.appendChild(artistNameElement);
+
+        const spotifyLinkElement = document.createElement("a");
+        spotifyLinkElement.href = spotifyLink;
+        spotifyLinkElement.innerText = "Listen on Spotify";
+        trackInfo.appendChild(spotifyLinkElement);
+
+        trackElement.appendChild(trackInfo);
+        tracksContainer.appendChild(trackElement);
+    });
+        }
+    </script>
+</head>
+
+<body>
+    <header class="text-gray-600 body-font">
+        <div class="container mx-auto flex flex-wrap p-5 flex-col md:flex-row items-center">
+            <a class="flex title-font font-medium items-center text-gray-900 mb-4 md:mb-0">
+                <img src="1.png" alt="Logo" class="w-10 h-10 rounded-full">
+                <span class="ml-3 text-xl">Musify</span>
+            </a>
+            <nav class="md:ml-auto md:mr-auto flex flex-wrap items-center text-base justify-center">
+
+                <a href="about.html" class="mr-5 hover:text-gray-900">About</a>
+                <a href="analysis.html" class="mr-5 hover:text-gray-900">Back</a>
+
+            </nav>
+            <button class="inline-flex items-center bg-gray-100 border-0 py-1 px-3 focus:outline-none hover:bg-purple-500 rounded text-base mt-4 md:mt-0" onclick="openPage()">HOME
+                <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-4 h-4 ml-1" viewBox="0 0 24 24">
+                    <path d="M5 12h14M12 5l7 7-7 7"></path>
+                </svg>
+            </button>
+        </div>
+    </header>
+    <div class="container mx-auto py-8">
+        <h1 class="text-3xl text-gray-900 text-center mb-8">Sentiment Analysis</h1>
+        <div class="max-w-md mx-auto bg-gray-600 p-8 rounded-lg shadow-md">
+            <div class="mb-4">
+                <input type="text" id="sentence-input" placeholder="Enter a sentence..."
+                    class="w-full px-4 py-2 rounded-lg border-gray-500 focus:outline-none focus:border-purple-500 bg-gray-100 text-gray-900">
+            </div>
+            <div>
+                <button onclick="analyzeSentiment()"
+                    class="w-full py-2 px-4 bg-purple-500 text-white rounded-lg focus:outline-none hover:bg-purple-600">
+                    Analyze Sentiment
+                </button>
+            </div>
+        </div>
+        <div id="output-mood" class="text-center text-xl mt-8 text-gray-900"></div>
+    </div>
+
+    <!-- Container for recommended tracks -->
+    <div id="recommended-tracks" class="container mx-auto py-8"></div>
+
+</body>
+
+</html>
